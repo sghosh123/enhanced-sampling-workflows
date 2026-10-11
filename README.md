@@ -1,12 +1,10 @@
 # Enhanced Sampling Workflows
 
-**Development release:** `0.1.0a2`  
 
 **Purpose:** reusable utilities for collective-variable analysis, umbrella-window preparation, OpenMM metadynamics/umbrella runs, and free-energy-surface (FES) diagnostics.
 
 This repository generalizes methods from a copper-trafficking protein–protein simulation workflow into a small package with explicit units, configuration files, tests, and reproducible outputs. It is designed to complement—not duplicate—the more general `copper-trafficking-mechanism` analysis repository.
 
-> **Research-use warning:** this is an alpha integration draft. Its automated tests use synthetic data; the OpenMM runners have not been runtime-tested here because OpenMM is not installed in the build environment. Before production use, validate atom selections, custom force-field compatibility, periodic-boundary handling, restraints, and output CVs on a short pilot simulation. The templates deliberately do not recreate the copper-specific harmonic bond and positional restraints present in some original study scripts.
 
 ## Capabilities
 
