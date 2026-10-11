@@ -1,0 +1,92 @@
+{
+  "system": {
+    "pdb": "../data/validated_solvated_system.pdb",
+    "forcefield_xml": [
+      "../forcefields/charmm36_copper_2.xml",
+      "charmm36.xml",
+      "charmm36/water.xml"
+    ],
+    "nonbonded_method": "PME",
+    "nonbonded_cutoff_angstrom": 12.0,
+    "constraints": "HBonds",
+    "rigid_water": true,
+    "remove_cm_motion": true,
+    "ewald_error_tolerance": 0.0005
+  },
+  "integrator": {
+    "temperature_k": 310.0,
+    "friction_per_ps": 1.0,
+    "timestep_fs": 2.0
+  },
+  "simulation": {
+    "platform": "CPU",
+    "platform_properties": {},
+    "minimize": true,
+    "minimize_max_iterations": 0,
+    "equilibration_steps": 15000,
+    "dcd_interval_steps": 50000,
+    "state_interval_steps": 50000
+  },
+  "collective_variables": [
+    {
+      "name": "d_A1X1",
+      "kind": "distance",
+      "atoms": [
+        {"chain": "A", "resid": "56", "name": "CA"},
+        {"chain": "B", "resid": "55", "name": "CA"}
+      ],
+      "min_value": 1.5,
+      "max_value": 3.0,
+      "bias_width": 0.05,
+      "grid_width": 50,
+      "unit": "nm",
+      "pbc": true
+    },
+    {
+      "name": "d_B2Y2",
+      "kind": "distance",
+      "atoms": [
+        {"chain": "A", "resid": "26", "name": "CA"},
+        {"chain": "B", "resid": "25", "name": "CA"}
+      ],
+      "min_value": 1.75,
+      "max_value": 3.25,
+      "bias_width": 0.05,
+      "grid_width": 50,
+      "unit": "nm",
+      "pbc": true
+    },
+    {
+      "name": "d_A2X2",
+      "kind": "distance",
+      "atoms": [
+        {"chain": "A", "resid": "63", "name": "CA"},
+        {"chain": "B", "resid": "62", "name": "CA"}
+      ],
+      "min_value": 0.25,
+      "max_value": 1.0,
+      "bias_width": 0.05,
+      "grid_width": 50,
+      "unit": "nm",
+      "pbc": true
+    }
+  ],
+  "metadynamics": {
+    "temperature_k": 310.0,
+    "bias_factor": 15.0,
+    "hill_height_kj_mol": 1.5,
+    "hill_frequency_steps": 100,
+    "save_frequency_steps": 1000,
+    "steps_per_block": 25000,
+    "total_steps": 100000,
+    "bias_directory": "meta_bias",
+    "output_directory": "metadynamics_output",
+    "convergence": {
+      "max_delta_f_kj_mol": 5.0,
+      "max_rmse_kj_mol": 2.5,
+      "max_minima_shift_grid": 1.0,
+      "minima_count": 3,
+      "consecutive_blocks": 4
+    }
+  }
+}

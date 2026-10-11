@@ -1,0 +1,68 @@
+{
+  "trajectories": [
+    {
+      "id": "T4",
+      "topology": "../data/T4/topology.pdb",
+      "trajectory": "../data/T4/trajectory.xtc"
+    },
+    {
+      "id": "T7",
+      "topology": "../data/T7/topology.pdb",
+      "trajectory": "../data/T7/trajectory.xtc"
+    },
+    {
+      "id": "T8",
+      "topology": "../data/T8/topology.pdb",
+      "trajectory": "../data/T8/trajectory.xtc"
+    },
+    {
+      "id": "T26",
+      "topology": "../data/T26/topology.pdb",
+      "trajectory": "../data/T26/trajectory.xtc"
+    }
+  ],
+  "collective_variables": [
+    {
+      "name": "d_A1X1",
+      "kind": "distance",
+      "atoms": [
+        {"segid": "A", "resid": 56, "name": "CA"},
+        {"segid": "B", "resid": 55, "name": "CA"}
+      ],
+      "min_value": 1.5,
+      "max_value": 3.0,
+      "bias_width": 0.05,
+      "grid_width": 50,
+      "unit": "nm",
+      "pbc": true
+    },
+    {
+      "name": "d_A2X2",
+      "kind": "distance",
+      "atoms": [
+        {"segid": "A", "resid": 63, "name": "CA"},
+        {"segid": "B", "resid": 62, "name": "CA"}
+      ],
+      "min_value": 0.2,
+      "max_value": 1.0,
+      "bias_width": 0.05,
+      "grid_width": 50,
+      "unit": "nm",
+      "pbc": true
+    },
+    {
+      "name": "d_B2Y2",
+      "kind": "distance",
+      "atoms": [
+        {"segid": "A", "resid": 26, "name": "CA"},
+        {"segid": "B", "resid": 25, "name": "CA"}
+      ],
+      "min_value": 1.75,
+      "max_value": 3.25,
+      "bias_width": 0.05,
+      "grid_width": 50,
+      "unit": "nm",
+      "pbc": true
+    }
+  ]
+}

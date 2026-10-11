@@ -1,0 +1,61 @@
+{
+  "system": {
+    "pdb": "../data/validated_window_seed.pdb",
+    "forcefield_xml": [
+      "../forcefields/charmm36_copper_2.xml",
+      "charmm36.xml",
+      "charmm36/water.xml"
+    ],
+    "nonbonded_method": "PME",
+    "nonbonded_cutoff_angstrom": 12.0,
+    "constraints": "HBonds",
+    "rigid_water": true,
+    "remove_cm_motion": true
+  },
+  "integrator": {"temperature_k": 310.0, "friction_per_ps": 1.0, "timestep_fs": 2.0},
+  "simulation": {
+    "platform": "CPU",
+    "platform_properties": {},
+    "minimize": true,
+    "equilibration_steps": 50000,
+    "dcd_interval_steps": 10000,
+    "state_interval_steps": 10000
+  },
+  "collective_variables": [
+    {
+      "name": "d_A1X1",
+      "kind": "distance",
+      "atoms": [
+        {"chain": "A", "resid": "56", "name": "CA"},
+        {"chain": "B", "resid": "55", "name": "CA"}
+      ],
+      "min_value": 1.5,
+      "max_value": 3.0,
+      "bias_width": 0.05,
+      "grid_width": 50,
+      "unit": "nm",
+      "pbc": true
+    },
+    {
+      "name": "d_A2X2",
+      "kind": "distance",
+      "atoms": [
+        {"chain": "A", "resid": "63", "name": "CA"},
+        {"chain": "B", "resid": "62", "name": "CA"}
+      ],
+      "min_value": 0.2,
+      "max_value": 1.0,
+      "bias_width": 0.05,
+      "grid_width": 50,
+      "unit": "nm",
+      "pbc": true
+    }
+  ],
+  "umbrella": {
+    "centers_nm": {"d_A1X1": 2.2, "d_A2X2": 0.6},
+    "force_constant_kj_mol_nm2": 2000.0,
+    "production_steps": 1000000,
+    "steps_per_block": 5000,
+    "output_directory": "umbrella_output"
+  }
+}
