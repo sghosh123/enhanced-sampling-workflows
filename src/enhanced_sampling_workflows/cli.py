@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 
 from .config import load_json, validate_trajectory_config
+from .basins import detect_fes_minima, select_basin_representatives, plot_fes_overlay
 from .convergence import compare_fes
 from .fes import load_fes_bundle, plot_fes, plot_fes_slices
 from .trajectory import compute_cv_table
@@ -100,6 +101,80 @@ def _export_seeds(windows_path: str, config_path: str, outdir: str, overwrite: b
     return output_root
 
 
+
+def _extract_basin_pdbs(representatives: pd.DataFrame, trajectory_config_path: str, outdir: str, overwrite: bool) -> int:
+    try:
+        import MDAnalysis as mda
+    except ImportError as exc:
+        raise RuntimeError("PDB export requires MDAnalysis. Install with 'pip install enhanced-sampling-workflows[trajectory]'.") from exc
+    config = load_json(trajectory_config_path)
+    trajectories, _ = validate_trajectory_config(config)
+    by_id = {str(item["id"]): item for item in trajectories}
+    root = Path(outdir)
+    root.mkdir(parents=True, exist_ok=True)
+    cache = {}
+    written = 0
+    try:
+        for row in representatives.itertuples(index=False):
+            if row.representative_status != "matched":
+                continue
+            tid = str(row.representative_trajectory_id)
+            if tid not in by_id:
+                raise ValueError(f"Representative references unknown trajectory id {tid!r} in trajectory config.")
+            item = by_id[tid]
+            if tid not in cache:
+                cache[tid] = mda.Universe(item["topology"], item["trajectory"])
+            universe = cache[tid]
+            frame = int(row.representative_frame)
+            if frame < 0 or frame >= len(universe.trajectory):
+                raise ValueError(f"Representative frame {frame} exceeds trajectory {tid!r} with {len(universe.trajectory)} frames.")
+            target_dir = root / str(row.basin_id)
+            target_dir.mkdir(parents=True, exist_ok=True)
+            target = target_dir / "representative.pdb"
+            if target.exists() and not overwrite:
+                raise FileExistsError(f"Refusing to overwrite {target}; pass --overwrite to replace it.")
+            universe.trajectory[frame]
+            universe.atoms.write(str(target))
+            written += 1
+    finally:
+        cache.clear()
+    return written
+
+
+def command_extract_basin_frames(args) -> int:
+    if args.export_pdb and not args.trajectory_config:
+        raise ValueError("--trajectory-config is required together with --export-pdb.")
+    values, metadata = load_fes_bundle(args.fes, args.metadata)
+    table = _read_table(args.cv_table)
+    representatives = select_basin_representatives(
+        table, values, metadata, cv_columns=args.cv_columns,
+        trajectory_column=args.trajectory_column, segment_column=args.segment_column,
+        frame_column=args.frame_column, min_separation_grid=args.min_separation_grid,
+        max_minima=args.max_minima, basin_radius_grid=args.basin_radius_grid,
+        max_sample_distance_grid=args.max_sample_distance_grid,
+    )
+    outdir = Path(args.outdir)
+    outdir.mkdir(parents=True, exist_ok=True)
+    representatives.to_csv(outdir / "basin_representatives.tsv", sep="\t", index=False)
+    if args.export_pdb:
+        count = _extract_basin_pdbs(representatives, args.trajectory_config, str(outdir / "structures"), args.overwrite)
+        print(f"Exported {count} representative PDB files.")
+    matched = int((representatives.get("representative_status", pd.Series(dtype=str)) == "matched").sum())
+    print(f"Found {len(representatives)} separated minima; representative frames matched for {matched}; table: {(outdir / 'basin_representatives.tsv').resolve()}")
+    return 0
+
+
+def command_plot_fes_overlay(args) -> int:
+    values, metadata = load_fes_bundle(args.fes, args.metadata)
+    table = _read_table(args.cv_table)
+    output = plot_fes_overlay(
+        values, metadata, table, cv_columns=args.cv_columns,
+        color_column=args.color_by, output_path=args.output,
+        max_points=args.max_points, title=args.title,
+    )
+    print(f"FES overlay written to {output.resolve()}")
+    return 0
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="esw",
@@ -148,6 +223,35 @@ def build_parser() -> argparse.ArgumentParser:
     slices.add_argument("--output-dir", default="fes_slices")
     slices.add_argument("--slice-axis", type=int, default=2)
     slices.add_argument("--number-of-slices", type=int, default=8)
+
+    basins = sub.add_parser("extract-basin-frames", help="Detect separated FES minima and select nearby sampled frames")
+    basins.add_argument("fes", help="FES .npy file with matching JSON metadata")
+    basins.add_argument("cv_table", help="CV table with one row per sampled frame")
+    basins.add_argument("--metadata", help="Optional explicit FES metadata JSON path")
+    basins.add_argument("--cv-columns", nargs="+", required=True, help="CV table columns in FES axis order")
+    basins.add_argument("--trajectory-column", default="trajectory_id")
+    basins.add_argument("--segment-column", default="segment_id")
+    basins.add_argument("--frame-column", default="frame")
+    basins.add_argument("--min-separation-grid", type=float, default=2.0)
+    basins.add_argument("--max-minima", type=int, default=20)
+    basins.add_argument("--basin-radius-grid", type=float, default=1.5)
+    basins.add_argument("--max-sample-distance-grid", type=float, default=2.5)
+    basins.add_argument("--outdir", default="fes_basin_representatives")
+    basins.add_argument("--export-pdb", action="store_true", help="Also export whole-system PDBs for matched frames")
+    basins.add_argument("--trajectory-config", help="Trajectory configuration used for PDB export")
+    basins.add_argument("--overwrite", action="store_true")
+    basins.set_defaults(func=command_extract_basin_frames)
+
+    overlay = sub.add_parser("plot-fes-overlay", help="Overlay CV samples colored by a mechanistic observable on a 2D FES")
+    overlay.add_argument("fes", help="2D FES .npy file with matching JSON metadata")
+    overlay.add_argument("cv_table", help="CV table containing sampled CVs and the observable")
+    overlay.add_argument("--metadata", help="Optional explicit FES metadata JSON path")
+    overlay.add_argument("--cv-columns", nargs=2, required=True, metavar=("CV_X", "CV_Y"))
+    overlay.add_argument("--color-by", required=True, help="Numeric column, e.g. CuS_distance_A or salt_bridge_count")
+    overlay.add_argument("--max-points", type=int, default=12000)
+    overlay.add_argument("--output", default="fes_mechanism_overlay.png")
+    overlay.add_argument("--title")
+    overlay.set_defaults(func=command_plot_fes_overlay)
 
     meta = sub.add_parser("run-metadynamics", help="Run an OpenMM well-tempered metadynamics configuration.")
     meta.add_argument("config")
@@ -211,6 +315,10 @@ def main(argv: list[str] | None = None) -> int:
                                       slice_axis=args.slice_axis,
                                       number_of_slices=args.number_of_slices)
             print(f"Wrote {len(outputs)} slices to {Path(args.output_dir).resolve()}")
+        elif args.command == "extract-basin-frames":
+            command_extract_basin_frames(args)
+        elif args.command == "plot-fes-overlay":
+            command_plot_fes_overlay(args)
         elif args.command == "run-metadynamics":
             from .openmm_runner import run_metadynamics
             output = run_metadynamics(args.config, pdb_override=args.pdb)

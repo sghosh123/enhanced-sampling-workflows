@@ -1,9 +1,12 @@
 # Enhanced Sampling Workflows
 
-**Purpose:** Utilities for collective-variable analysis, umbrella-window preparation, OpenMM metadynamics/umbrella runs, and free-energy-surface (FES) diagnostics.
+**Development release:** `0.1.0a2`  
 
-This repository generalizes methods from a copper-trafficking protein–protein simulation workflow into a small package with explicit units, configuration files, tests, and reproducible outputs. 
+**Purpose:** reusable utilities for collective-variable analysis, umbrella-window preparation, OpenMM metadynamics/umbrella runs, and free-energy-surface (FES) diagnostics.
 
+This repository generalizes methods from a copper-trafficking protein–protein simulation workflow into a small package with explicit units, configuration files, tests, and reproducible outputs. It is designed to complement—not duplicate—the more general `copper-trafficking-mechanism` analysis repository.
+
+> **Research-use warning:** this is an alpha integration draft. Its automated tests use synthetic data; the OpenMM runners have not been runtime-tested here because OpenMM is not installed in the build environment. Before production use, validate atom selections, custom force-field compatibility, periodic-boundary handling, restraints, and output CVs on a short pilot simulation. The templates deliberately do not recreate the copper-specific harmonic bond and positional restraints present in some original study scripts.
 
 ## Capabilities
 
@@ -129,3 +132,27 @@ Tests cover configuration validation, grid assignment, nearest-seed limits, reus
 The design was informed by project scripts for OpenMM metadynamics (including 2D distance/angle and 3D distance CV workflows), FES evolution/convergence analysis, and umbrella grid generation. The original project scripts contain system-specific values, hard-coded paths, and implementation defects; this repository rewrites the reusable parts rather than shipping those scripts unchanged. No production trajectory, topology, force-field XML, or generated FES files are bundled.
 
 See `docs/source-inspired-corrections.md`, `docs/methods-and-validation.md`, and `LICENSE-STATUS.md` before publishing.
+
+## FES minima, representative structures, and mechanistic overlays
+
+Detect spatially separated local minima, then select nearby *observed* frames from a CV table:
+
+```bash
+esw extract-basin-frames free_energy.npy cv_table.tsv \
+  --cv-columns d_A1X1_nm d_B2Y2_nm \
+  --trajectory-column trajectory_id --segment-column segment_id --frame-column frame \
+  --basin-radius-grid 1.5 --max-sample-distance-grid 2.5 \
+  --outdir results/fes_basins
+```
+
+The tool writes `basin_representatives.tsv`. Minima without a sampled frame within the configured maximum offset are marked `unrepresented`; the code does not silently substitute a globally nearest frame. To export a whole-system PDB for each matched frame, add `--export-pdb --trajectory-config configs/trajectory_cv.example.json`. Verify that the trajectory IDs, topology/trajectory paths, and local frame indices refer to the same source files as the CV table. For concatenated trajectories whose local frame numbers restart by file, configure and preserve the source mapping carefully before exporting.
+
+For a 2D FES, overlay sampled CV points colored by a mechanism observable such as Cu-S distance or salt-bridge count:
+
+```bash
+esw plot-fes-overlay free_energy_2d.npy mechanism_cv.tsv \
+  --cv-columns d_A1X1_nm d_B2Y2_nm --color-by CuS_distance_A \
+  --output results/fes_colored_by_CuS_distance.png
+```
+
+The FES array must have its adjacent JSON metadata, or pass `--metadata`. These commands identify numerical minima and nearest sampled representatives; they do not establish transition states, reactive pathways, or chemical bond formation. Check the CV conventions, free-energy reweighting, basin separation and representative structure visually before making a mechanistic claim.

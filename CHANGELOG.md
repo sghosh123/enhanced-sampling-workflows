@@ -9,3 +9,9 @@
 - Added optional OpenMM metadynamics and single-window harmonic umbrella runners with JSON configuration.
 - Added example configurations, synthetic data demo, documentation, unit tests, and GitHub Actions test workflow.
 - Marked OpenMM runtime validation and production-system validation as outstanding; see `docs/methods-and-validation.md`.
+
+## 0.1.0a2
+
+- Added connected-plateau-aware, spatially separated FES local-minimum detection.
+- Added representative-frame selection with a maximum CV-space offset; distant frames remain explicitly unrepresented.
+- Added optional whole-system representative PDB export and 2D FES overlays colored by mechanistic observables.
